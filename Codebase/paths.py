@@ -9,3 +9,7 @@ QUESTIONNAIRE_POST_PATH = os.path.join(DATAFRAMES_PATH, "Questionnaires", "SSSQ_
 AMYLASE_PATH = os.path.join(DATAFRAMES_PATH, "Saliva", "amylase.xlsx")
 CORTISOL_PATH = os.path.join(DATAFRAMES_PATH, "Saliva", "cortisol.xlsx")
 STUDY_LIST_PATH = os.path.join(DATAFRAMES_PATH, "StudyList.xlsx")
+
+STRUCTURED_DATA_PATH = os.path.join(DATAFRAMES_PATH, "Output", "structured_data.xlsx")
+ECG_PATH = os.path.join(USER_DIR, "ECG_data")
+PLOT_PATH = os.path.join(USER_DIR, "Plots")

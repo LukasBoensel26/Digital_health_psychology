@@ -167,6 +167,45 @@ def create_line_plot(df, feature: str, show: bool = True, save_path: str = None)
     if show:
         plt.show()
 
+def check_for_normality(df, feature: str):
+    from scipy.stats import shapiro
+
+    group_stressful = df[df['Group'] == 'eg'][feature].dropna()
+    group_friendly = df[df['Group'] == 'cg'][feature].dropna()
+
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+    stats.probplot(group_stressful, dist="norm", plot=ax1)
+    stats.probplot(group_friendly, dist="norm", plot=ax2)
+    ax1.set_title("Q-Q plot for the experimental group (eg)")
+    ax2.set_title("Q-Q plot for the control group (cg)")
+    plt.show()
+
+    stat_eg, p_value_eg = shapiro(group_stressful)
+    stat_cg, p_value_cg = shapiro(group_friendly)
+    print("eg: ", p_value_eg)
+    print("cg: ", p_value_cg)
+    if p_value_eg < 0.05:
+        print(f"{feature} does not follow a normal distribution for the experimental group!")
+    else:
+       print(f"{feature} follows a normal distribution for the experimental group!")
+    if p_value_cg < 0.05:
+        print(f"{feature} does not follow a normal distribution for the control group!")
+    else:
+       print(f"{feature} follows a normal distribution for the control group!") 
+
+def check_variance_homogeneity(df, feature: str):
+    from scipy.stats import levene
+
+    group_stressful = df[df['Group'] == 'eg'][feature].dropna()
+    group_friendly = df[df['Group'] == 'cg'][feature].dropna()
+
+    stat, p_value = levene(group_stressful, group_friendly)
+    print(p_value)
+    if p_value < 0.05:
+        print(f"For {feature} the variances are significantly different between experimental group and control group!")
+    else:
+       print(f"For {feature} the variances are homogeneous between experimental group and control group!")
+
 def compare_means(df, feature: str):
     """
     this method performs a t-test on the specified feature
@@ -181,14 +220,6 @@ def compare_means(df, feature: str):
     # null hypothesis (H0): There is no significant difference in the mean feature increase between the two groups.
     # --> compare means
     # --> perform t-test
-
-    # TODO
-    # Check Assumptions for a T-Test
-    # a) Independence
-    # b) Normality
-    # stats.probplot(df[feature].dropna(), dist="norm", plot=plt)
-    # plt.show()
-    # c) Homogeneity of variances
 
     # separate the data into two groups and remove missing values --> TODO: maybe implement other strategy to deal with missing values
     group_stressful = df[df['Group'] == 'eg'][feature].dropna()
@@ -211,21 +242,37 @@ def main():
     features_to_clean = ["Amylase increase (U/ml)", "Cortisol max increase (nmol/l)"]
     df_cleaned = clean_dataframe(df, features=features_to_clean)
 
-    # TODO
-    # check for normality in the respective features
-    # --> maybe perform log or sqrt transform if normality is not yet given
+    # 1) check for normality in the respective features
+    print("Normality check:")
+    check_for_normality(df=df_cleaned, feature="Amylase increase (U/ml)")
+
+    # log transform with shift to try to get normality --> just relevant for cortisol
+    cortisol = df_cleaned["Cortisol max increase (nmol/l)"]
+    cortisol_log = np.log(cortisol - cortisol.min() + 1)
+    df_cleaned["Cortisol max increase (nmol/l)"] = cortisol_log
+    check_for_normality(df=df_cleaned, feature="Cortisol max increase (nmol/l)")
+
+    # 2) check for variance homogeneity in the respective features
+    print("Variance homogeneity check:")
+    check_variance_homogeneity(df=df_cleaned, feature="Amylase increase (U/ml)")
+    check_variance_homogeneity(df=df_cleaned, feature="Cortisol max increase (nmol/l)")
+
+    # independence check --> DONE
+    # normality check --> DONE
+    # variance homogeneity check --> DONE
+    # --> perform t-test
 
     # plotting
     # before cleaning
-    create_box_stripplot_plot(df, feature="Amylase increase (U/ml)", hue="Gender", show=False)
-    create_box_stripplot_plot(df, feature="Cortisol max increase (nmol/l)", hue="Gender", show=False)
-    # after cleaning
-    create_box_stripplot_plot(df_cleaned, feature="Amylase increase (U/ml)", hue="Gender", show=False, save_path=os.path.join(PLOT_PATH, "amylase_boxplot.png"))
-    create_box_stripplot_plot(df_cleaned, feature="Cortisol max increase (nmol/l)", hue="Gender", show=False, save_path=os.path.join(PLOT_PATH, "cortisol_boxplot.png"))
+    # create_box_stripplot_plot(df, feature="Amylase increase (U/ml)", hue="Gender", show=False)
+    # create_box_stripplot_plot(df, feature="Cortisol max increase (nmol/l)", hue="Gender", show=False)
+    # # after cleaning
+    # create_box_stripplot_plot(df_cleaned, feature="Amylase increase (U/ml)", hue="Gender", show=False, save_path=os.path.join(PLOT_PATH, "amylase_boxplot.png"))
+    # create_box_stripplot_plot(df_cleaned, feature="Cortisol max increase (nmol/l)", hue="Gender", show=False, save_path=os.path.join(PLOT_PATH, "cortisol_boxplot.png"))
 
-    # create line plot for amylase and cortisol
-    create_line_plot(df_cleaned, feature="amylase", show=False, save_path=os.path.join(PLOT_PATH, "amylase_lineplot.png"))
-    create_line_plot(df_cleaned, feature="cortisol", show=False, save_path=os.path.join(PLOT_PATH, "cortisol_lineplot.png"))
+    # # create line plot for amylase and cortisol
+    # create_line_plot(df_cleaned, feature="amylase", show=False, save_path=os.path.join(PLOT_PATH, "amylase_lineplot.png"))
+    # create_line_plot(df_cleaned, feature="cortisol", show=False, save_path=os.path.join(PLOT_PATH, "cortisol_lineplot.png"))
 
     # perform the statistical tests
     _, p_value = compare_means(df_cleaned, feature="Amylase increase (U/ml)")
@@ -246,8 +293,8 @@ def main():
         # failed to reject the null hypothesis
         print(f"There is no significant difference in the mean maximum cortisol increase between the two groups")
 
-    df.to_excel(os.path.join(os.path.dirname(STRUCTURED_DATA_PATH), "structured_data_with_features.xlsx"))
-    df_cleaned.to_excel(os.path.join(os.path.dirname(STRUCTURED_DATA_PATH), "structured_data_with_features_cleaned.xlsx"))
+    # df.to_excel(os.path.join(os.path.dirname(STRUCTURED_DATA_PATH), "structured_data_with_features.xlsx"))
+    # df_cleaned.to_excel(os.path.join(os.path.dirname(STRUCTURED_DATA_PATH), "structured_data_with_features_cleaned.xlsx"))
     sys.exit(0)
 
 if __name__ == "__main__":

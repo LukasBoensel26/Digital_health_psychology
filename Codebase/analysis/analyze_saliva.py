@@ -190,7 +190,7 @@ def check_for_normality(distribution: pd.core.series.Series, qq_plot: bool = Fal
     # --> H0: the distribution follows a normal distribution
 
     if qq_plot:
-        fig, ax = plt.figure(figsize=(8,6))
+        fig, ax = plt.subplots(figsize=(8,6))
         stats.probplot(distribution, dist="norm", plot=ax)
         plt.title("Q-Q plot for the given distribution")
         plt.show()
@@ -299,7 +299,52 @@ def compare_means_by_t_test(df, feature: str, group: str, log_transform_switch: 
     t_stat, p_value = stats.ttest_ind(group_1, group_2, equal_var=True)  # Set equal_var=False if variances are unequal
 
     return t_stat, p_value
+
+def check_for_significant_change_in_feature(df, feature: str):
+    """
+    this method performs a paired t-test (also known as a dependent samples t-test) to compare levels of the specified feature
+    before and after the TSST within the same subjects within the experimental group
+
+    Args:
+        df (pandas.core.frame.DataFrame): dataframe of structured data
+        feature (str): feature for which to perform a paired t-test on. Can be one of the following ["amylase" or "cortisol"]
+
+    Returns:
+        tuple: t_stat, p_value
+    """
+    # H0: There is no significant difference in the features levels before and after the TSST
+
+    # get experimental group
+    df = df[df["Group"] == 'eg']
+    if feature == "amylase":
+        # take 2nd and 3rd timepoint
+        pre_feature = "Amylase Sample 02 (U/ml)"
+        post_feature = "Amylase Sample 03 (U/ml)"
+    else: # cortisol
+        # take 2nd and 4th timepoint
+        pre_feature = "Cortisol Sample 02 (nmol/l)"
+        post_feature = "Cortisol Sample 04 (nmol/l)"
+
+    # locally perform an outlier rejection in pre_feature and post_feature
+    features_to_clean = [pre_feature, post_feature]
+    df_cleaned = clean_dataframe(df=df, features=features_to_clean)
+
+    # perform pair-wise deletion of study subjects if either pre_feature or post_feature is missing
+    df_cleaned = df_cleaned.dropna(subset=[pre_feature, post_feature])
+    pre = df_cleaned[pre_feature]
+    post = df_cleaned[post_feature]
+
+    # check for normality of differences
+    diff = post - pre
+    normality = check_for_normality(distribution=diff, qq_plot=False)
+    if not normality:
+        print("The differences are not normally distributed! But we can though use the paired t-test!")
     
+    # perform a pairwise t-test
+    t_stat, p_value = stats.ttest_rel(pre, post)
+
+    return t_stat, p_value
+
 def compare_groups_by_whitney_u_test(df, feature: str, group: str, plot_distribution: bool = False):
     """
     this method performs a Wilcoxon-Mann-Whitney-Test (non-parametric) on the specified feature between groups
@@ -358,6 +403,21 @@ def main():
     features_to_clean = ["Amylase increase (U/ml)", "Cortisol max increase (nmol/l)"]
     df_cleaned = clean_dataframe(df, features=features_to_clean)
 
+    # perform a pairwise t-test to test whether the TSST caused stress in the experimental group
+    # --> this is a manipulation check for the successive statistical tests
+    features_paired_ttest = ["amylase", "cortisol"]
+    for feature in features_paired_ttest:
+        print(f"\nPerforming a paired t-test for the feature {feature} within the experimental group")
+        t_stat, p_value = check_for_significant_change_in_feature(df=df_cleaned, feature=feature)
+        if not np.isnan(t_stat) and not np.isnan(p_value):
+            print(f"Feature: {feature}\np-value: {p_value}")
+            if p_value < SIGNIFICANCE_LVL:
+                # reject the null hypothesis
+                print(f"There is a significant difference in the {feature} levels before and after the TSST!")
+            else:
+                # failed to reject the null hypothesis
+                print(f"There is NO significant difference in the {feature} levels before and after the TSST!")
+    
     # perform a Mann-Whitney U test --> non-parametric counterpart to t-test
     features_to_test = features_to_clean
     test_groups = ["Group", "Gender"]

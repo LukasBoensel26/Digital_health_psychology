@@ -104,9 +104,9 @@ for scale in ['engagement', 'distress', 'worry', 'total']:
         print(f"T-Wert: {t_stat:.3f}, P-Wert: {p_value:.3f}\n") #and here the t-value is given with 3 decimals, the p value as well
 
         if p_value < 0.05:
-            print(f"Signifikante Unterschiede zwischen CG und EG für {scale} (p < 0.05).\n")
+            print(f"Signifikante Unterschiede zwischen pre und post für {scale} (p < 0.05).\n")
         else:
-            print(f"Keine signifikanten Unterschiede zwischen CG und EG für {scale} (p > 0.05).\n")
+            print(f"Keine signifikanten Unterschiede zwischen pre und post für {scale} (p > 0.05).\n")
 
 '''
 and now we look at the group differences 

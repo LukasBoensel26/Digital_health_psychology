@@ -167,7 +167,7 @@ def create_box_stripplot_plot(df, feature: str, group: str, show: bool = True, s
     df = pd.concat([df_1, df_2], axis=0, ignore_index=True)
 
     plt.figure(figsize=(8, 6))
-    sns.boxplot(x=group, y=feature, data=df, width=0.5)
+    sns.boxplot(x=group, y=feature, data=df, width=0.5, showfliers=False)
     sns.stripplot(x=group, y=feature, data=df, color="black", alpha=0.8, jitter=True)  # add jitter for better visibility
     plt.title("Boxplot with overlayed samples")
     if save_path:

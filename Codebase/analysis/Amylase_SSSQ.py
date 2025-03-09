@@ -10,6 +10,26 @@ pre_sssq = pd.read_excel(r'CortisolAmaylaseSSSQPANAS_pre.xlsx', engine='openpyxl
 combined_data = pd.merge(pre_sssq, post_sssq, on="VP", suffixes=('_pre', '_post')) #merch pre and post dataset to one
 combined_data = combined_data[combined_data['Group_post'] != '?'] #exclude person 7
 
+
+# Reverse-Coding-Funktion (1 wird zu 5, 2 zu 4, usw.)
+def reverse_code(series):
+    return 6 - series
+
+
+reverse_coded_items = [2, 11, 13, 17, 21, 22]
+
+# Reverse-Coding
+for i in reverse_coded_items:
+    pre_col = f"Pre_SSSQ_{i}_pre"
+    post_col = f"Pre_SSSQ_{i}_post"
+
+    if pre_col in combined_data.columns:
+        combined_data[pre_col] = reverse_code(combined_data[pre_col])
+
+    if post_col in combined_data.columns:
+        combined_data[post_col] = reverse_code(combined_data[post_col])
+
+
 engagement_pre = [f"Pre_SSSQ_{i}_pre" for i in [2, 5, 11, 12, 13, 17, 21, 22]]
 distress_pre = [f"Pre_SSSQ_{i}_pre" for i in [1, 3, 4, 6, 7, 8, 9, 10]]
 worry_pre = [f"Pre_SSSQ_{i}_pre" for i in [14, 15, 16, 18, 19, 20, 23, 24]]
